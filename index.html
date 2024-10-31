@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discord Nitro Checker</title>
+  <style>
+    /* Reset e configurações gerais */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: url('https://media.discordapp.net/attachments/1299466296043245648/1300574909021556829/8c04d7ec8deff0df5331c9e9bbaf9080.jpg?ex=67215645&is=672004c5&hm=327192e8689be132bdc111f9bb6f88d0b690e7b7852c875ad3e10df406110f81') center/cover no-repeat fixed;
+      color: white;
+    }
+
+    /* Container principal */
+    .container {
+      width: 100%;
+      max-width: 500px;
+      padding: 25px;
+      background: rgba(0, 0, 0, 0.85);
+      border-radius: 12px;
+      box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.7);
+      text-align: center;
+      position: relative;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #7289DA;
+    }
+
+    label {
+      display: block;
+      margin: 15px 0 5px;
+      font-weight: bold;
+      color: #e0e0e0;
+    }
+
+    input, textarea {
+      width: 100%;
+      margin-bottom: 15px;
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #e0e0e0;
+      font-size: 15px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #7289DA;
+      color: white;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #5b6ea7;
+    }
+
+    .output {
+      margin-top: 15px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.75);
+      border-radius: 8px;
+      border: 1px solid gray;
+      white-space: pre-wrap;
+      font-family: monospace;
+      text-align: left;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    /* Estilos para os status */
+    .valid { color: #32CD32; }
+    .invalid { color: #FF6347; }
+    .error { color: #FFD700; }
+    .cyan { color: #00CED1; }
+
+    /* Estilos para o ícone do Discord */
+    #discordIcon {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+
+    #discordIcon a img {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    #discordIcon a img:hover {
+      transform: scale(1.1);
+      box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.7);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Discord Nitro Checker</h1>
+    <label for="token">Token do Usuário:</label>
+    <input type="text" id="token" placeholder="Digite o token do usuário">
+    
+    <label for="links">Links para checar (um por linha):</label>
+    <textarea id="links" rows="8" placeholder="Insira os links aqui..."></textarea>
+    
+    <button onclick="startChecker()">Iniciar Checker</button>
+    <div class="output" id="output"></div>
+  </div>
+
+  <div id="discordIcon">
+    <a href="https://discord.gg/TKauqCmV" target="_blank" title="Join our Discord">
+      <img src="https://media.discordapp.net/attachments/1165368464605708348/1299135540695666758/1f0bfc0865d324c2587920a7d80c609b.jpg?ex=671c19c1&is=671ac841&hm=7fd62f5556f39b5bfdee925bb1a872fc90ee7edd3f2025bdf2b62cb03a681bba" alt="Discord Icon">
+    </a>
+  </div>
+
+  <script>
+    async function startChecker() {
+      const token = document.getElementById('token').value.trim();
+      const links = document.getElementById('links').value.trim().split('\n');
+      let checkados = 0, validos = 0, invalidos = 0;
+      const output = document.getElementById('output');
+      output.innerHTML = '';
+
+      for (const link of links) {
+        let codigo;
+        if (link.startsWith('https://discord.com/billing/promotions/')) {
+          codigo = link.replace('https://discord.com/billing/promotions/', '');
+        } else if (link.startsWith('https://promos.discord.gg/')) {
+          codigo = link.replace('https://promos.discord.gg/', '');
+        } else {
+          output.innerHTML += `<span class="error">[ERRO] Esse link "${link}" não é suportado!</span><br>`;
+          continue;
+        }
+
+        const url = `https://discord.com/api/v9/entitlements/gift-codes/${codigo}`;
+        const params = new URLSearchParams({ country_code: "BR", with_application: "false", with_subscription_plan: "true" });
+        checkados++;
+
+        try {
+          const response = await fetch(`${url}?${params}`, { headers: { 'Authorization': token } });
+          if (response.ok) {
+            const data = await response.json();
+            if (!data.redeemed && data.uses < 1) {
+              validos++;
+              output.innerHTML += `<span class="valid">[VALIDO] O link (${link}) é válido<br>[TIPO] ${link.startsWith('https://promos.discord.gg/') ? "Mensal" : "Trimensal"}<br>[EXPIRAÇÃO] ${expiryIn(data.expires_at)}</span><br><br>`;
+            } else {
+              invalidos++;
+              output.innerHTML += `<span class="invalid">[INVALIDO] O link (${link}) é inválido<br>[TIPO] ${link.startsWith('https://promos.discord.gg/') ? "Mensal" : "Trimensal"}</span><br><br>`;
+            }
+          } else {
+            invalidos++;
+            output.innerHTML += `<span class="invalid">[INVALIDO] O link (${link}) é inválido<br>[TIPO] ${link.startsWith('https://promos.discord.gg/') ? "Mensal" : "Trimensal"}</span><br><br>`;
+          }
+        } catch (error) {
+          invalidos++;
+          output.innerHTML += `<span class="error">[ERRO] Falha na requisição para o link (${link})</span><br>`;
+        }
+      }
+
+      output.innerHTML += `<span class="cyan">[FINAL] Links verificados: ${checkados}<br>Válidos: ${validos}<br>Inválidos: ${invalidos}</span>`;
+    }
+
+    function expiryIn(expiresAt) {
+      const expiryDate = new Date(expiresAt);
+      const today = new Date();
+      const timeDiff = expiryDate - today;
+      const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+      return `${days} dias restantes`;
+    }
+  </script>
+</body>
+  </html>
